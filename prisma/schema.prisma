@@ -13,23 +13,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User model for authentication and user management
-model User {
+model Customer {
   id        String   @id @default(cuid())
   email     String   @unique
-  name      String?
-  image     String?
+  fullName      String @map("full_name")
+  emailIsVerified Boolean @default(false)
+  password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relations
   orders    Order[]
-  reviews   Review[]
-
-  @@map("users")
+  @@map("customers")
 }
 
-// Category model for product organization
 model Category {
   id          String   @id @default(cuid())
   name        String   @unique
@@ -38,7 +34,6 @@ model Category {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relations
   products Product[]
 
   @@map("categories")
@@ -49,20 +44,43 @@ model Product {
   id          String    @id @default(cuid())
   name        String
   description String?
-  price       Decimal   @db.Decimal(10, 2)
-  imageUrl    String?
-  stock       Int       @default(0)
   slug        String    @unique
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  isActive    Boolean @default(true)
 
-  // Relations
   categoryId String
   category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  orders      OrderItem[]
-  reviews     Review[]
+  SKUs  SKU[]
 
   @@map("products")
+}
+
+model SKU {
+  id  String  @id @default(cuid())
+  size  String?
+  color String?
+  stockQuantity Int @default(0)
+  unit_price  Decimal @db.Decimal(10, 2)
+  sale_price  Decimal @db.Decimal(10, 2)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  images  Image[]
+  items OrderItem[]
+  productId String
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Image{
+  id  String @id  @default(cuid())
+  imageUrl  String
+  isPrimary Boolean @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  SKUId String
+  SKU SKU @relation(fields: [SKUId], references: [id], onDelete: Cascade)
 }
 
 // Order model for purchase tracking
@@ -70,12 +88,13 @@ model Order {
   id        String    @id @default(cuid())
   total     Decimal   @db.Decimal(10, 2)
   status    OrderStatus @default(PENDING)
+  // shipping
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   // Relations
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
   items  OrderItem[]
 
   @@map("orders")
@@ -85,34 +104,38 @@ model Order {
 model OrderItem {
   id        String   @id @default(cuid())
   quantity  Int      @default(1)
-  price     Decimal  @db.Decimal(10, 2) // Price at time of purchase
+  line_subtotal     Decimal  @db.Decimal(10, 2) // Price at time of purchase
+  qunatity  Int @default(1)
+  unitPriceAtPurchase  Decimal @db.Decimal(10, 2)
+  taxAmount  Decimal @db.Decimal(10, 2)
+  discountAmount  Decimal@db.Decimal(10, 2)
 
   // Relations
   orderId   String
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  SKUId String
+  SKU SKU @relation(fields: [SKUId], references: [id], onDelete: Cascade)
 
   @@map("order_items")
 }
 
-// Review model for product reviews
-model Review {
-  id        String   @id @default(cuid())
-  rating    Int      // 1-5 stars
-  comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  // Relations
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+model ShippingAddress {
+  id  String  @id @default(cuid())
+  address1  String
+  address2  String?
+  phoneNumber String
 
-  @@unique([userId, productId]) // One review per user per product
-  @@map("reviews")
+  @@map("shipping_addresses")
 }
+
+model Country {
+  name  String  @unique
+  code  String  @unique
+
+  @@map("countries")
+}
+
 
 // Enum for order status
 enum OrderStatus {
