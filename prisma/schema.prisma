@@ -14,15 +14,17 @@ datasource db {
 }
 
 model Customer {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  fullName      String @map("full_name")
-  emailIsVerified Boolean @default(false)
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String   @unique
+  firstName String  @map("first_name")
+  lastName String  @map("last_name")
+  emailVerified Boolean  @default(false)  @map("email_verified")
+  password        String
+  createdAt       DateTime @default(now())  @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  orders    Order[]
+  orders Order[]
+
   @@map("customers")
 }
 
@@ -31,8 +33,8 @@ model Category {
   name        String   @unique
   description String?
   slug        String   @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())  @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   products Product[]
 
@@ -41,101 +43,119 @@ model Category {
 
 // Product model for shop items
 model Product {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
   description String?
-  slug        String    @unique
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  isActive    Boolean @default(true)
+  slug        String   @unique
+  createdAt   DateTime @default(now())  @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isActive    Boolean  @default(true) @map("is_active")
 
-  categoryId String
-  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  SKUs  SKU[]
+  categoryId String @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  skus       SKU[]
 
+  @@index([categoryId])
   @@map("products")
 }
 
 model SKU {
-  id  String  @id @default(cuid())
-  size  String?
-  color String?
-  stockQuantity Int @default(0)
-  unit_price  Decimal @db.Decimal(10, 2)
-  sale_price  Decimal @db.Decimal(10, 2)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  
-  images  Image[]
-  items OrderItem[]
-  productId String
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  size          String?
+  color         String?
+  stockQuantity Int      @default(0)  @map("stock_quantity")
+  unitPrice    Decimal  @db.Decimal(10, 2)  @map("unit_price")
+  salePrice    Decimal  @db.Decimal(10, 2)  @map("sale_price")
+  createdAt     DateTime @default(now())  @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  images    Image[]
+  items     OrderItem[]
+  productId String  @map("product_id")
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("skus")
 }
 
-model Image{
-  id  String @id  @default(cuid())
-  imageUrl  String
-  isPrimary Boolean @default(false)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  
-  SKUId String
-  SKU SKU @relation(fields: [SKUId], references: [id], onDelete: Cascade)
+model Image {
+  id        String   @id @default(cuid())
+  imageUrl  String  @map("image_url")
+  isPrimary Boolean  @default(false)  @map("is_primary")
+  createdAt DateTime @default(now())  @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  skuId String  @map("sku_id")
+  sku   SKU    @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@index([skuId])
+  @@map("images")
 }
 
 // Order model for purchase tracking
 model Order {
-  id        String    @id @default(cuid())
-  total     Decimal   @db.Decimal(10, 2)
+  id        String      @id @default(cuid())
+  total     Decimal     @db.Decimal(10, 2)
   status    OrderStatus @default(PENDING)
   // shipping
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt  @map("updated_at")
 
   // Relations
-  customerId String
-  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  items  OrderItem[]
+  customerId        String  @map("customer_id")
+  customer          Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items             OrderItem[]
+  shippingAddressId String? @map("shipping_address_id")
+  shippingAddress   ShippingAddress? @relation(fields: [shippingAddressId], references: [id])
 
+  @@index([customerId])
+  @@index([shippingAddressId])
   @@map("orders")
 }
 
 // OrderItem model for items within an order
 model OrderItem {
-  id        String   @id @default(cuid())
-  quantity  Int      @default(1)
-  line_subtotal     Decimal  @db.Decimal(10, 2) // Price at time of purchase
-  qunatity  Int @default(1)
-  unitPriceAtPurchase  Decimal @db.Decimal(10, 2)
-  taxAmount  Decimal @db.Decimal(10, 2)
-  discountAmount  Decimal@db.Decimal(10, 2)
+  id                  String  @id @default(cuid())
+  quantity            Int     @default(1)
+  unitPrice Decimal @db.Decimal(10, 2)  @map("unit_price")
+  taxAmount           Decimal @db.Decimal(10, 2)  @map("tax_amount")
+  discountAmount      Decimal @db.Decimal(10, 2)  @map("discount_amount")
 
   // Relations
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  SKUId String
-  SKU SKU @relation(fields: [SKUId], references: [id], onDelete: Cascade)
+  orderId String  @map("order_id")
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  skuId   String  @map("sku_id")
+  sku     SKU    @relation(fields: [skuId], references: [id], onDelete: Cascade)
 
+  @@index([orderId])
+  @@index([skuId])
   @@map("order_items")
 }
 
-
 model ShippingAddress {
-  id  String  @id @default(cuid())
-  address1  String
-  address2  String?
-  phoneNumber String
+  id          String  @id @default(cuid())
+  address1    String
+  address2    String?
+  phoneNumber String  @map("phone_number")
+  city        String
+  state       String?
+  postalCode  String?  @map("postal_code")
+  countryId   String  @map("country_id")
+  country     Country @relation(fields: [countryId], references: [id])
+  orders      Order[]
 
+  @@index([countryId])
   @@map("shipping_addresses")
 }
 
 model Country {
-  name  String  @unique
-  code  String  @unique
+  id                String            @id @default(cuid())
+  name              String            @unique
+  code              String            @unique
+  shippingAddresses ShippingAddress[]
 
   @@map("countries")
 }
-
 
 // Enum for order status
 enum OrderStatus {
